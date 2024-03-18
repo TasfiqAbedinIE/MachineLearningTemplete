@@ -24,10 +24,14 @@ class MachineLearningTemplete:
             st.markdown("Uploaded Dataset")
             st.dataframe(dataset, hide_index=True, use_container_width=True)
             self.columns_name = dataset.columns
-            c1, c2 = st.columns([2,2])
+            c1, c2 = st.columns([3,1])
             with c1:
                 st.markdown("Select Column Name to Finalize your Dataset")
                 self.selected_column_for_main_data_set = st.multiselect("Column List", self.columns_name)
+                main_data_set = dataset[self.selected_column_for_main_data_set]
+            main_data_show = st.expander("Final Dataset")
+            with main_data_show:
+                st.dataframe(main_data_set, hide_index=True, use_container_width=True)
         else:
             pass
 

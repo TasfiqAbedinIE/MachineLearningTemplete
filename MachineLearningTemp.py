@@ -23,8 +23,11 @@ class MachineLearningTemplete:
             dataset = pd.read_csv(data_file)
             st.markdown("Uploaded Dataset")
             st.dataframe(dataset, hide_index=True, use_container_width=True)
-            self.columns_name = dataset.columns()
-            self.selected_column_for_main_data_set = st.multiselect("Column List", self.columns_name)
+            self.columns_name = dataset.columns
+            c1, c2 = st.columns([2,2])
+            with c1:
+                st.markdown("Select Column Name to Finalize your Dataset")
+                self.selected_column_for_main_data_set = st.multiselect("Column List", self.columns_name)
         else:
             pass
 

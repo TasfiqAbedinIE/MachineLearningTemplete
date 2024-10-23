@@ -1,0 +1,29 @@
+section[data-testid='stSidebar'] {
+    background-color: #48cae4;
+    height: 100%;
+    width: 100px;
+    flex-shrink: unset !important;
+}
+
+.section_heading {
+    font-size: 28px;
+    font-weight: bold;
+    color: #023047;
+}
+
+.section_subheading {
+    font-size: 24px;
+    color: #023047;
+}
+
+.graph_title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #000
+}
+
+.section_title {
+    font-size: 30px;
+    font-weight: bold;
+    color: #000
+}

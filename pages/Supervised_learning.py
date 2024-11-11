@@ -5,6 +5,7 @@ from joblib.parallel import method
 from navigation import Side_Bar
 from MachineLearningTemp import MachineLearningTemplete
 import os
+from io import BytesIO
 
 class streamlit_page_config:
     st.set_page_config(
@@ -120,6 +121,17 @@ def finding_missing_value(uploaded_dataframe):
 
     return null_calculation
 
+
+# Downloading Data into excel file
+def data_to_excel(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+    processed_data = output.getvalue()
+    return processed_data
+
+
+
 sec3_r1c1, sec3_r1c2 = st.columns([4, 6])
 with sec3_r1c1:
     try:
@@ -206,6 +218,7 @@ with sec3_r1c2:
 
             elif caring_missing_value_permission == "NO":
                 st.info("Let's Move Forward With Your Existing DataFrame.")
+                eliminated_dataframe = uploaded_dataframe
 
 
     except:
@@ -217,45 +230,152 @@ try:
         # st.dataframe(eliminated_dataframe.isnull().sum())
     st.info("If you want to move forward with this data set PRESS SUBMIT. After submission if you want to change your any"
                 " method, please start from the beginning.")
-    if st.button("SUBMIT"):
-        pass
+    missing_value_handled_dataset = eliminated_dataframe
+    excel_data_missing_value = data_to_excel(missing_value_handled_dataset)
+    st.download_button(
+        label="Download data as Excel",
+        data=excel_data_missing_value,
+        file_name="output_data.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    st.success("Your Dataset is recorded and saved for the future use.")
+
 
 except Exception as e:
     pass
-#
-#
-#
-#                 try:
-#                     # Handling Missing Values using MEAN, MEDIAN, MODE Method ----->
-#                     if method_of_data_preparation == "By MEAN and MAX Values":
-#                         st.info("If missing values column contains categorical values, MEAN & MAX Method will results error. If you don't"
-#                                 " want to lose values of your dataframe you can move forward and transform the categorical values before"
-#                                 " applying the method.")
-#
-#                         columns_of_missing_values = st.multiselect("Select Columns to Apply Method:", columns_of_dataframe,
-#                                                                    key="columns_of_missing_values")
-#                         st.markdown(columns_of_missing_values)
-#                 except Exception as e:
-#                     st.error(e)
 
 
+st.divider()
+st.markdown("<p class=section_title>DEPENDENT & INDEPENDENT VARIABLE SELECTION</p>", unsafe_allow_html=True)
 
-                # Imputation Method ----->
-                # df.fillna(value=0, inplace=True)  # Replace with 0
-                # df.fillna(method='ffill', inplace=True)  # Forward-fill missing values
-                # df.fillna(method='bfill', inplace=True)  # Backward-fill missing values
+# Section-4: Dependent & Independent variable selection --------------->
+try:
+    SEC4_R1_COL1, SEC4_R1_COL2 = st.columns(2)
+    with SEC4_R1_COL1:
+        selected_independent_variables = st.multiselect("Select Independent Variables", missing_value_handled_dataset.columns,
+                                                        key="selected_independent_variables")
+        st.info("Independent variables are those columns of your dataset which will be used to predict the future value of"
+                " dependent variable.")
+        independent_dataframe = missing_value_handled_dataset[selected_independent_variables]
+        with st.expander("DataFrame of Independent Variables"):
+            st.dataframe(independent_dataframe, hide_index=True, use_container_width=True)
 
-                # Interpolation Method ----->
-                # df.interpolate(method='linear', inplace=True)  # Linear interpolation
+    with SEC4_R1_COL2:
+        selected_dependent_variable = st.multiselect("Select Dependent Variable",
+                                                        missing_value_handled_dataset.columns,
+                                                        key="selected_dependent_variables")
+        st.info("Dependent variable is only column of your dataset which will be predicted based on the machine learning "
+                "model your are going to choose for analysis.")
+        dependent_dataframe = missing_value_handled_dataset[selected_dependent_variable]
+        with st.expander("DataFrame of dependent Variables"):
+            st.dataframe(dependent_dataframe, hide_index=True, use_container_width=True)
 
-#             if caring_missing_value_permission == "NO":
-#                 st.info("HORRAAA!!! Let's Move Forward With Your Existing DataFrame.")
-# except:
-#     pass
+except Exception as e:
+    # st.error("Please complete Previous sections FIRST")
+    pass
 
 
+st.divider()
+st.markdown("<p class=section_title>CATEGORICAL DATA PROCESSING</p>", unsafe_allow_html=True)
+
+# Section-5: categorical data processing --------------->
+
+def independent_categorical_variables(independent_dataframe):
+    st.markdown("<p style='font-weight: bold;'>Transforming Independent Variables</p>",
+                unsafe_allow_html=True)
+    from sklearn.compose import ColumnTransformer
+    from sklearn.preprocessing import OneHotEncoder
+    import numpy as np
+
+    selected_independent_variables_cat = st.multiselect("Select Column name with categorical values",
+                                                        independent_dataframe.columns,
+                                                        key="selected_independent_variables_cat")
+
+    try:
+        ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [0])], remainder='passthrough')
+        concaneted_df = pd.DataFrame()
+        # st.markdown(selected_independent_variables_cat)
+        for item in selected_independent_variables_cat:
+            column_data = independent_dataframe[[item]].values
+            transformed_data = ct.fit_transform(column_data)
+            transformed_data = pd.DataFrame(transformed_data)
+
+            transformed_columns = transformed_data.columns
+            column_name = []
+            for i in range(len(transformed_columns)):
+                column_name.append(item + f"_{str(i)}")
+
+            transformed_data.columns = column_name
+            concaneted_df = pd.concat([concaneted_df, transformed_data], axis=1)
+
+        independent_dataframe_without_cat = independent_dataframe.drop(selected_independent_variables_cat, axis=1)
+        independent_dataframe_for_ML = pd.concat([independent_dataframe_without_cat, concaneted_df], axis=1)
+        with st.expander("Transformed Dataset of Independent Variables"):
+            st.dataframe(independent_dataframe_for_ML, hide_index=True, use_container_width=True)
+            return independent_dataframe_for_ML
+
+    except Exception as e:
+        st.error(e)
+
+def dependent_categorical_variables(dependent_dataframe):
+    st.markdown("<p style='font-weight: bold;'>Transforming Dependent Variables</p>",
+                unsafe_allow_html=True)
+    from sklearn.preprocessing import LabelEncoder
+    le = LabelEncoder()
+    try:
+        dependent_columns = dependent_dataframe.columns
+        dependent_columns = list(dependent_columns)
+
+        dependent_column_name = []
+        for i in dependent_columns:
+            dependent_column_name.append(i)
+
+        # st.markdown(dependent_column_name)
+
+        dependent_column_data = dependent_dataframe[dependent_columns].values
+        transformed_dependent_data = le.fit_transform(dependent_column_data)
+        dependent_dataframe_for_ML = pd.DataFrame(transformed_dependent_data)
+        dependent_dataframe_for_ML.columns = dependent_column_name
+
+        with st.expander("Transformed Dataset of Dependent Variables"):
+            st.dataframe(dependent_dataframe_for_ML, hide_index=True)
+            return dependent_dataframe_for_ML
+
+    except Exception as e:
+        st.error(e)
 
 
+try:
+    if dependent_dataframe and independent_dataframe:
+        st.info("If your dataset contains categorical values, it is important to transform those into numerical values.")
+        # selected_caltegorical_columns = st.multiselect("Select Categorical Columns", independent_dataframe.columns,
+        #                                                key="selected_categorical_columns")
+        question_for_transformation = st.radio("Does you dataset contains categorical values?", ["YES", "NO"], index=None,
+                                                key="question_for_transformation")
+        if question_for_transformation == "YES":
+            st.markdown("<p style='margin-top: 2vh; font-weight: bold; font-size:20px'>Select Variables contains categorical value</p>",
+                            unsafe_allow_html=True)
+
+            independent_variable_for_cat = st.checkbox("Independent Variables", key="independent_variable_for_cat")
+            dependent_variable_for_cat = st.checkbox("Dependent Variables", key="dependent_variable_for_cat")
+
+            if independent_variable_for_cat:
+                independent_dataframe_for_ML = independent_categorical_variables(independent_dataframe)
+            else:
+                independent_dataframe_for_ML = independent_dataframe
+
+            if dependent_variable_for_cat:
+                dependent_dataframe_for_ML = dependent_categorical_variables(dependent_dataframe)
+            else:
+                dependent_dataframe_for_ML = dependent_dataframe
 
 
+        if question_for_transformation == "NO":
+            independent_dataframe_for_ML = independent_dataframe
+            dependent_dataframe_for_ML = dependent_dataframe
+            st.success("You are ready to develop machine learning model. Move forward to the Next Section.")
+
+
+except Exception as e:
+    pass
 
